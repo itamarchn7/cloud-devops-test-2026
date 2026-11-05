@@ -1,6 +1,6 @@
-# Answers for GCP Cloud DevOps Engineer exercise
+# GCP Cloud DevOps Engineer exercise - Itamar Cohen
 
-## 1. Service interruptions
+## Task 1 – Service interruptions
 ### Part 1
 #### 1. 
 If the only Pod is terminated, updated, or fails, there is no replacement Pod available.
@@ -204,4 +204,3 @@ The application continues connecting through the Cloud SQL instance connection e
 However, existing connections may be interrupted, so the application must implement retry logic and reconnect to the database.
 
 
-## 2. Backup and recovery
