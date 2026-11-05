@@ -1,0 +1,102 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: survey-api
+  namespace: production
+spec:
+# runs two Pods so that one can continue serving traffic while the other is being updated or fails
+  replicas: 2
+
+  # retains the history of previous revisions for inspection and rollback purposes
+  revisionHistoryLimit: 5
+  # specifies the minimum number of seconds a Pod must be ready before it is considered available for the Deployment rollout to progress
+  minReadySeconds: 10
+  progressDeadlineSeconds: 600
+
+  selector:
+    matchLabels:
+      app: survey-api
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+    # allows one additional pod to be created during the rolling update
+      maxSurge: 1
+    # prevents the deployment from intentionally reducing the number of available Pods below the desired replica count.
+      maxUnavailable: 0
+
+  template:
+    metadata:
+      labels:
+        app: survey-api
+
+    spec:
+      # gives the application time to finish processing requests before shutting down.
+      terminationGracePeriodSeconds: 45
+    
+      # attempts to distribute Pods across different Nodes
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: survey-api
+
+      # This section for first part of the assignment:-
+      #topologySpreadConstraints:
+      #  - maxSkew: 1
+      #    topologyKey: kubernetes.io/hostname
+      #    whenUnsatisfiable: ScheduleAnyway
+      #    labelSelector:
+      #      matchLabels:
+      #        app: survey-api
+
+      containers:
+        - name: survey-api
+          image: REGION-docker.pkg.dev/PROJECT/REPOSITORY/survey-api:VERSION
+
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+
+          # Probes are used to determine the health of a container. Kubernetes will use these probes to know when to restart a container, when to remove it from service, and when to start sending traffic to it.
+          
+          # startupProbe gives the application enough time to complete its startup process
+          startupProbe:
+            httpGet:
+              path: /health/startup
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+
+          # readinessProbe ensures that the Pod is ready to receive traffic
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          # livenessProbe checks if the application is still running and responsive and allows Kubernetes to restart the container
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          resources:
+            # specifies the resources required for scheduling the Pod
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            # limits the resource consumption of the container
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
